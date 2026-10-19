@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b0d1a">
+<title>The Haunted Wild</title>
+<meta name="description" content="Something got into The Virtual Wild. Explore the haunted house, find the spirits, and dare a friend to enter.">
+<meta property="og:title" content="The Haunted Wild">
+<meta property="og:description" content="Something got into The Virtual Wild. Find the three spirits — if you dare.">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Inter:wght@400;500;600;700&family=Rubik+Wet+Paint&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<section id="gate" class="gate">
+  <p class="kicker">A Halloween experience</p>
+  <h1 class="gate-title">Enter if you dare</h1>
+  <p id="dareLine" class="dare-line" hidden></p>
+  <button id="enter" class="enter" type="button">Tap to enter</button>
+  <p class="fine">Sound on for the full effect</p>
+</section>
+
+<div id="app" hidden>
+  <header class="top">
+    <a class="brand" href="https://www.thevirtualwild.com" target="_blank" rel="noopener">The Virtual Wild</a>
+    <div class="tools">
+      <div class="spirits" title="Spirits found">
+        <span class="pips" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span id="spiritTxt" aria-live="polite">0 of 3 spirits</span>
+      </div>
+      <button id="sound" class="icon" type="button" aria-label="Mute sound" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path class="on" d="M4 9v6h4l5 4V5L8 9H4zm12.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/><path class="off" d="M4 9v6h4l5 4V5L8 9H4zm15.6 3 2.1-2.1-1.4-1.4-2.1 2.1-2.1-2.1-1.4 1.4 2.1 2.1-2.1 2.1 1.4 1.4 2.1-2.1 2.1 2.1 1.4-1.4z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="titleWrap">
+    <h1 class="title" id="title"><span>The</span> <span id="wVirtual">Virtual</span> <span>Wild</span></h1>
+  </div>
+
+  <main id="wrap">
+    <div id="stage">
+      <video id="scene" src="media/scene.mp4" playsinline preload="auto"></video>
+      <div class="tint"></div>
+      <div id="figs" aria-hidden="true"></div>
+      <canvas id="sceneSpray" aria-hidden="true"></canvas>
+      <canvas id="fog" aria-hidden="true"></canvas>
+      <div id="low"></div>
+      <canvas id="zap" aria-hidden="true"></canvas>
+      <div id="dark"></div>
+      <div id="spots"></div>
+    </div>
+    <div id="roomBar" hidden>
+      <button id="back" class="pill" type="button">← The hall</button>
+      <p id="roomName"></p>
+      <button id="next" class="pill" type="button">Next room →</button>
+    </div>
+    <button id="skip" class="pill skip" type="button" hidden>Skip intro</button>
+  </main>
+
+  <p id="hint" class="hint"></p>
+
+  <nav class="dock" aria-label="Take part">
+    <button class="dockbtn" data-open="photo" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4 7.2 6H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-3.2L15 4H9zm3 5a4 4 0 1 1 0 8 4 4 0 0 1 0-8z"/></svg>
+      <span>Spooky photo</span>
+    </button>
+    <button class="dockbtn" data-open="newsletter" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 7.2L4 7.3V17h16V7.3l-8 4.9z"/></svg>
+      <span>Newsletter</span>
+    </button>
+    <button class="dockbtn primary" data-open="inquiry" type="button">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2 2.4 6.3L21 9l-5 4.4L17.5 20 12 16.6 6.5 20 8 13.4 3 9l6.6-.7L12 2z"/></svg>
+      <span>Start a project</span>
+    </button>
+  </nav>
+</div>
+
+<aside id="panel" hidden aria-live="polite">
+  <button class="x" type="button" aria-label="Close">×</button>
+  <p class="kicker" id="pKicker"></p>
+  <h2 id="pTitle"></h2>
+  <p class="haunt" id="pHaunt"></p>
+  <p id="pBody"></p>
+  <div class="btns">
+    <a class="btn primary" id="pLink" target="_blank" rel="noopener">See our work →</a>
+    <button class="btn" id="pAsk" type="button">Start a project like this</button>
+  </div>
+</aside>
+
+<div id="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="x" type="button" aria-label="Close">×</button>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+<div id="flash"></div>
+
+<template id="tpl-newsletter">
+  <p class="kicker">Newsletter</p>
+  <h2 id="modalTitle">Join the coven</h2>
+  <p class="lede">Occasional dispatches from The Virtual Wild: new work, experiments and ideas from the strange edge of immersive marketing. No spam. We’re ghosts, not monsters.</p>
+  <form class="nl" novalidate>
+    <label>First name <input name="fname" autocomplete="given-name"></label>
+    <label>Email <input name="email" type="email" required autocomplete="email" inputmode="email"></label>
+    <div class="hp" aria-hidden="true"><input name="bot" tabindex="-1" autocomplete="off"></div>
+    <button class="btn primary" type="submit">Subscribe</button>
+    <p class="formmsg" role="status"></p>
+  </form>
+  <p class="fine">Prefer Mailchimp’s page? <a href="http://eepurl.com/gNXWG5" target="_blank" rel="noopener">Sign up there</a>.</p>
+</template>
+
+<template id="tpl-inquiry">
+  <p class="kicker">Start a project</p>
+  <h2 id="modalTitle">Summon us</h2>
+  <p class="lede">Tell us what you’re dreaming up. It goes straight to <b>hello@thevirtualwild.com</b>.</p>
+  <form class="iq" novalidate>
+    <label>Name <input name="name" required autocomplete="name"></label>
+    <label>Email <input name="email" type="email" required autocomplete="email" inputmode="email"></label>
+    <label>Company <input name="company" autocomplete="organization"></label>
+    <fieldset><legend>What are you thinking about?</legend><div class="chips"></div></fieldset>
+    <label>Timeline
+      <select name="timeline">
+        <option value="">Choose one</option>
+        <option>As soon as possible</option>
+        <option>In 1–3 months</option>
+        <option>In 3–6 months</option>
+        <option>Just exploring</option>
+      </select>
+    </label>
+    <label>Tell us more <textarea name="msg" rows="4" required></textarea></label>
+    <button class="btn primary" type="submit">Send inquiry</button>
+    <p class="formmsg" role="status"></p>
+  </form>
+</template>
+
+<template id="tpl-photo">
+  <p class="kicker">Spooky photo</p>
+  <h2 id="modalTitle">Step into the frame</h2>
+  <div class="booth">
+    <video id="pbVideo" playsinline muted autoplay></video>
+    <img id="pbResult" alt="Your haunted portrait" hidden>
+    <div id="pbCount" aria-live="assertive"></div>
+    <p id="pbMsg"></p>
+  </div>
+  <label class="nm">Your first name, for the dare <input id="pbName" maxlength="24" autocomplete="given-name"></label>
+  <div class="btns" id="pbTake"><button class="btn primary" id="pbShoot" type="button">Take my photo</button></div>
+  <div class="btns" id="pbDone" hidden>
+    <button class="btn primary" id="pbShare" type="button">Share</button>
+    <button class="btn" id="pbSave" type="button">Save photo</button>
+    <button class="btn" id="pbRetake" type="button">Retake</button>
+  </div>
+  <div class="dare" id="pbDare" hidden>
+    <p>Dare a friend to enter</p>
+    <div class="social">
+      <button class="soc" data-net="x" type="button">X</button>
+      <button class="soc" data-net="facebook" type="button">Facebook</button>
+      <button class="soc" data-net="linkedin" type="button">LinkedIn</button>
+      <button class="soc" data-net="whatsapp" type="button">WhatsApp</button>
+      <button class="soc" data-net="copy" type="button">Copy link</button>
+    </div>
+  </div>
+  <p class="fine">Your photo is made on your device. Nothing is uploaded unless you share it.</p>
+</template>
+
+<template id="tpl-reward">
+  <p class="kicker">All three spirits found</p>
+  <h2 id="modalTitle">The house is satisfied.</h2>
+  <p class="lede">Few make it this far. Claim your place among the haunted: take your spooky photo, dare a friend to beat you, or join the newsletter.</p>
+  <div class="btns stack">
+    <button class="btn primary" data-act="photo" type="button">Take my spooky photo</button>
+    <button class="btn" data-act="dare" type="button">Dare a friend</button>
+    <button class="btn" data-act="newsletter" type="button">Get the newsletter</button>
+  </div>
+</template>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>
