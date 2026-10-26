@@ -5,6 +5,15 @@
 // ───────── Settings you may want to change ─────────
 const SITE = 'https://www.thevirtualwild.com';
 const INQUIRY_EMAIL = 'hello@thevirtualwild.com';
+// Form delivery: FormSubmit emails every submission to INQUIRY_EMAIL. The first submission sends an
+// activation email to that inbox; click it once and every form after that is delivered.
+const FORM_ENDPOINT = `https://formsubmit.co/ajax/${INQUIRY_EMAIL}`;
+const INSTAGRAM = { handle: '@thevirtualwild', url: 'https://www.instagram.com/thevirtualwild/' };
+// The reward for finding all three spirits. Make sure the team can honor it before launch.
+const TREAT = {
+  title: 'Your treat: a free 20-minute brainstorm',
+  body: 'Wondering how AI could actually work in your business? Need an installation that stops a crowd in its tracks? Have a complex idea that has to land with everyone, not just experts? Grab 20 minutes with our team and we’ll work through it with you.',
+};
 const MAILCHIMP = {                       // from http://eepurl.com/gNXWG5
   action: 'https://thevirtualwild.us4.list-manage.com/subscribe/post-json',
   u: '8b1276d5fce9f2e98101757ba',
@@ -60,13 +69,13 @@ const CAPS = {
 
 // Positions are fractions of the (square) video frame.
 const ROOMS = [
-  { name: 'The Grand Hall', num: 'I', rect: [0.11, 0.21, 0.47, 0.68], door: [0.28, 0.705],
+  { name: 'The Grand Hall', num: 'I', rect: [0.11, 0.21, 0.47, 0.68], door: [0.23, 0.69],
     spots: [['booth', 0.335, 0.335], ['ar', 0.245, 0.47], ['web', 0.378, 0.535]],
     egg: { id: 'bats', at: [0.163, 0.545], line: 'Special delivery… from the other side.' } },
-  { name: 'The Séance Room', num: 'II', rect: [0.43, 0.21, 0.68, 0.69], door: [0.555, 0.725],
+  { name: 'The Séance Room', num: 'II', rect: [0.43, 0.21, 0.68, 0.69], door: [0.5, 0.765],
     spots: [['strategy', 0.513, 0.535], ['product', 0.64, 0.6]],
     egg: { id: 'ghost', at: [0.472, 0.49], line: 'Something was hiding in the ferns.' } },
-  { name: 'The Crypt Lounge', num: 'III', rect: [0.63, 0.22, 0.9, 0.64], door: [0.775, 0.66],
+  { name: 'The Crypt Lounge', num: 'III', rect: [0.63, 0.22, 0.9, 0.64], door: [0.79, 0.655],
     spots: [['env', 0.81, 0.55], ['marketing', 0.816, 0.462]],
     egg: { id: 'hands', at: [0.686, 0.43], line: 'They want out.' } },
 ];
@@ -90,7 +99,7 @@ const store = {
 };
 const cleanName = s => (s || '').replace(/[^\p{L}\p{M} .'-]/gu, '').replace(/\s+/g, ' ').trim().slice(0, 24);
 const pageUrl = () => location.origin + location.pathname;
-const dareUrl = name => name ? `${pageUrl()}?from=${encodeURIComponent(name)}` : pageUrl();
+const dareUrl = name => name ? `${pageUrl()}?free=${encodeURIComponent(name)}` : pageUrl();
 
 // ───────── Audio (all synthesized) ─────────
 const AU = { ctx: null, out: null, noise: null, wind: null, muted: store.get('thw-muted', false) };
@@ -291,8 +300,14 @@ const sceneCross = crossOutOp('6,5,10', () => { const W = stageW(), [x, y, w, h]
 const sceneTag = tagOp('HAUNTED', '#b4ff3a', 'rgba(150,255,60,.6)', () => { const W = stageW(), [cx, cy, sz, rot] = SIGN.tag; return { cx: cx * W, cy: cy * W, size: sz * W, rot }; }, 6);
 
 // ───────── Gate & intro ─────────
-const dareFrom = cleanName(new URLSearchParams(location.search).get('from'));
-if (dareFrom) { const l = $('#dareLine'); l.textContent = `${dareFrom} dared you to enter.`; l.hidden = false; }
+const params = new URLSearchParams(location.search);
+const rescue = cleanName(params.get('free') || params.get('from'));   // who this visitor came to rescue
+if (rescue) {
+  $('#gateKicker').textContent = 'Rescue mission';
+  $('#gateTitle').textContent = `${rescue} is trapped inside`;
+  const l = $('#dareLine'); l.textContent = 'Find the 3 restless spirits to set them free.'; l.hidden = false;
+  $('#enter').textContent = 'Go in after them';
+}
 
 $('#gate').addEventListener('click', enter);
 async function enter() {
@@ -301,7 +316,6 @@ async function enter() {
   $('#gate').hidden = true; $('#app').hidden = false;
   resizeAll();
   const fonts = document.fonts ? Promise.all(['400 40px "DM Serif Display"', '40px "Rubik Wet Paint"'].map(f => document.fonts.load(f))).catch(() => {}) : Promise.resolve();
-  setTimeout(() => $('#title').classList.add('in'), 500);
   if (store.get('thw-seen', false)) $('#skip').hidden = false; else setTimeout(() => { if (S.phase === 'intro') $('#skip').hidden = false; }, 3500);
   // the video's own music carries the cheery part, so it plays with sound (muted only if the visitor muted us)
   video.muted = AU.muted;
@@ -442,7 +456,6 @@ $('#skip').addEventListener('click', async () => {
 async function afterStorm(instant) {
   if (S.phase === 'spray' || S.phase === 'explore') return; S.phase = 'spray';
   $('#skip').hidden = true; store.set('thw-seen', true);
-  $('#title').classList.add('in');
   stage.classList.remove('surge', 'on', 'off'); $('#figs').innerHTML = ''; SFX.hum(false);
   if (!document.body.classList.contains('haunted')) haunt();
   if (!S.still) captureStill();
@@ -538,18 +551,50 @@ function buildHotspots() {
   syncFound(false);
 }
 
+function setMission() {
+  const n = S.found.size;
+  if (n === 3) {
+    $('#mKicker').textContent = rescue ? 'Rescue complete' : 'Mission complete';
+    $('#mTitle').textContent = rescue ? `You freed ${rescue}` : 'All 3 spirits found';
+    $('#mBody').textContent = 'Claim your treat, then get yourself trapped in the booth and see which friend comes to save you.';
+  } else {
+    $('#mKicker').textContent = rescue ? 'Rescue mission' : 'Your mission';
+    $('#mTitle').textContent = rescue ? `Free ${rescue}: find the 3 spirits` : 'Find the 3 restless spirits';
+    $('#mBody').textContent = (rescue ? `${rescue} is trapped in our haunted booth. ` : 'They’re hiding in our haunted booth. ')
+      + 'Step into each room, sweep your light around and click anything that glints.';
+  }
+}
+function buildRoomList() {
+  const ol = $('#roomList'); ol.innerHTML = '';
+  ROOMS.forEach((R, i) => {
+    const li = document.createElement('li'), b = document.createElement('button'); b.type = 'button'; b.dataset.room = i;
+    b.innerHTML = `<b>${R.num}</b><span></span><span class="st"></span>`; b.querySelector('span').textContent = R.name;
+    b.addEventListener('click', () => S.room === i ? leaveRoom() : enterRoom(i));
+    li.appendChild(b); ol.appendChild(li);
+  });
+  syncRoomList();
+}
+function syncRoomList() {
+  $$('#roomList button').forEach(b => {
+    const i = +b.dataset.room, st = b.querySelector('.st'), done = S.found.has(ROOMS[i].egg.id);
+    b.setAttribute('aria-current', String(S.room === i));
+    st.textContent = done ? 'Spirit found ✓' : 'Spirit hiding'; st.classList.toggle('ok', done);
+  });
+}
+
 function startExplore() {
   S.phase = 'explore';
-  buildHotspots();
+  buildHotspots(); buildRoomList(); setMission();
+  $('#mission').classList.add('in');
   document.body.classList.add('explore');
   document.body.dataset.room = '-1';
-  hint(S.found.size === 3 ? 'The spirits are at rest. But the house still has secrets.' : 'Three rooms. Three restless spirits. Find them all… if you dare.');
+  hint(S.found.size === 3 ? 'The spirits are at rest. But the house still has secrets.' : 'Choose a room to step inside.');
 }
 
 function enterRoom(i) {
   if (S.phase !== 'explore') return;
   closePanel();
-  S.room = i; document.body.dataset.room = String(i);
+  S.room = i; document.body.dataset.room = String(i); syncRoomList();
   zoomTo(ROOMS[i].rect);
   SFX.creak();
   $('#roomBar').hidden = false;
@@ -561,7 +606,7 @@ function enterRoom(i) {
 }
 function leaveRoom() {
   closePanel();
-  S.room = -1; document.body.dataset.room = '-1';
+  S.room = -1; document.body.dataset.room = '-1'; syncRoomList();
   zoomTo(null); SFX.whoosh();
   $('#roomBar').hidden = true;
   hint(S.found.size === 3 ? 'All three spirits found. Take your spooky photo before you go.' : `${3 - S.found.size} restless ${S.found.size === 2 ? 'spirit remains' : 'spirits remain'}. Choose a room.`);
@@ -581,12 +626,19 @@ function openCap(key, roomIndex) {
 function closePanel() { $('#panel').hidden = true; S.panelCap = null; }
 $('#panel .x').addEventListener('click', closePanel);
 $('#pAsk').addEventListener('click', () => { const k = S.panelCap; closePanel(); openModal('inquiry', { cap: k }); });
+// "See our work" opens our site in its own window so the haunted house stays open behind it
+$('#pLink').addEventListener('click', e => {
+  const w = Math.min(1280, screen.availWidth - 80), h = Math.min(900, screen.availHeight - 80);
+  e.preventDefault();   // a click always allows the window; on phones it simply opens as a new tab
+  window.open($('#pLink').href, 'tvw-work', `noopener,width=${w},height=${h},left=${(screen.availWidth - w) / 2},top=${(screen.availHeight - h) / 2}`);
+});
 
 function syncFound(animateId) {
   const n = S.found.size;
   $$('.pips i').forEach((p, i) => { p.classList.toggle('on', i < n); if (animateId && i === n - 1) { p.classList.remove('pop'); void p.offsetWidth; p.classList.add('pop'); } });
   $('#spiritTxt').textContent = `${n} of 3 spirits`;
   for (const id of S.found) { $$(`[data-egg="${id}"]`).forEach(el => el.classList.add('found')); }
+  syncRoomList(); if (S.phase === 'explore') setMission();
 }
 
 function triggerEgg(E, roomIndex) {
@@ -597,7 +649,7 @@ function triggerEgg(E, roomIndex) {
   setTimeout(() => {
     SFX.chime(); syncFound(E.id);
     toast(`${E.line}  ·  Spirit ${S.found.size} of 3 found`);
-    hint(S.found.size === 3 ? 'That’s all three. The house wants a word with you…' : 'Spirit found. Try another room.');
+    hint(S.found.size === 3 ? (rescue ? `That’s all three. ${rescue} is free…` : 'That’s all three. The house wants a word with you…') : 'Spirit found. Try another room.');
     if (S.found.size === 3) setTimeout(() => openModal('reward'), 2600);
   }, 900);
 }
@@ -719,7 +771,25 @@ function setupNewsletter(root) {
   });
 }
 
-// inquiry → a pre-written email to hello@thevirtualwild.com
+// Every form lands in INQUIRY_EMAIL. If delivery fails, the visitor gets a ready-to-send email instead.
+async function sendLead(subject, fields) {
+  const r = await fetch(FORM_ENDPOINT, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ _subject: subject, _template: 'table', _captcha: 'false', Source: 'The Haunted Wild', ...fields }),
+  });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || String(d.success) !== 'true') throw new Error(d.message || `HTTP ${r.status}`);
+}
+function mailtoFallback(subject, fields) {
+  const body = Object.entries(fields).map(([k, v]) => `${k}: ${v}`).join('\r\n');
+  return `mailto:${INQUIRY_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+function showSendError(msg, subject, fields) {
+  msg.className = 'formmsg err';
+  msg.innerHTML = 'We couldn’t send that just now. <a>Email it to us instead</a>.';
+  msg.querySelector('a').href = mailtoFallback(subject, fields);
+}
+
 function setupInquiry(root, { cap }) {
   const f = $('form', root), msg = $('.formmsg', root), chips = $('.chips', root), picked = new Set(cap ? [cap] : []);
   for (const [key, C] of [...Object.entries(CAPS), ['other', { name: 'Something else' }]]) {
@@ -728,28 +798,61 @@ function setupInquiry(root, { cap }) {
     b.addEventListener('click', () => { picked.has(key) ? picked.delete(key) : picked.add(key); b.setAttribute('aria-pressed', String(picked.has(key))); });
     chips.appendChild(b);
   }
-  f.addEventListener('submit', e => {
+  const btn = $('button[type=submit]', root);
+  f.addEventListener('submit', async e => {
     e.preventDefault();
+    if (f.bot.value) return;
     const v = n => f[n].value.trim();
     const missing = !v('name') ? 'name' : !validEmail(v('email')) ? 'email' : !v('msg') ? 'msg' : null;
     if (missing) { msg.className = 'formmsg err'; msg.textContent = missing === 'email' ? 'Please add a valid email so we can reply.' : missing === 'name' ? 'Please tell us your name.' : 'Tell us a little about the project.'; f[missing].focus(); return; }
-    const interests = [...picked].map(k => k === 'other' ? 'Something else' : CAPS[k].name).join(', ') || 'Not specified';
-    const lines = [
-      `Name: ${v('name')}`, `Email: ${v('email')}`, `Company: ${v('company') || '-'}`,
-      `Interested in: ${interests}`, `Timeline: ${f.timeline.value || 'Not specified'}`, '', v('msg'), '', '— Sent from The Haunted Wild',
-    ];
-    const subject = `Project inquiry from ${v('name')}${v('company') ? ` (${v('company')})` : ''}`;
-    const href = `mailto:${INQUIRY_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(lines.join('\r\n'))}`;
-    window.location.href = href;
-    const done = document.createElement('div'); done.className = 'done';
-    done.innerHTML = `<h3>Your message is ready.</h3><p class="lede">Your email app should have opened with everything filled in. Just press send.</p>
-      <p class="fine">Nothing opened? Email us at <a href="mailto:${INQUIRY_EMAIL}">${INQUIRY_EMAIL}</a> <button class="soc" type="button">Copy address</button></p>`;
-    done.querySelector('button').addEventListener('click', () => copyText(INQUIRY_EMAIL, 'Email address copied.'));
-    f.replaceWith(done); SFX.chime();
+    const subject = `Haunted Wild inquiry: ${v('name')}${v('company') ? ` (${v('company')})` : ''}`;
+    const fields = {
+      Name: v('name'), email: v('email'), Company: v('company') || '-',
+      'Interested in': [...picked].map(k => k === 'other' ? 'Something else' : CAPS[k].name).join(', ') || 'Not specified',
+      Timeline: f.timeline.value || 'Not specified', Message: v('msg'), Newsletter: f.news.checked ? 'Yes' : 'No',
+      'Spirits found': `${S.found.size} of 3`,
+    };
+    btn.disabled = true; btn.textContent = 'Sending…'; msg.className = 'formmsg'; msg.textContent = '';
+    try {
+      await sendLead(subject, fields);
+      if (f.news.checked) mailchimp(v('email'), v('name').split(' ')[0]).catch(() => {});
+      const done = document.createElement('div'); done.className = 'done';
+      done.innerHTML = '<h3>Your summons has been received.</h3><p class="lede">Our team will get back to you soon, probably before midnight.</p>';
+      f.replaceWith(done); SFX.chime();
+    } catch (err) {
+      console.warn('inquiry', err); showSendError(msg, subject, fields);
+      btn.disabled = false; btn.textContent = 'Send inquiry';
+    }
   });
 }
 
 function setupReward(root) {
+  if (rescue) { $('#rwKicker', root).textContent = 'Rescue complete'; $('#modalTitle', root).textContent = `You freed ${rescue}!`; }
+  $('#rwLede', root).textContent = rescue
+    ? `All three spirits are at rest and ${rescue} is free. Your turn: claim your treat, then get yourself trapped and see who comes to save you.`
+    : 'You found all three spirits. Few make it this far. Claim your treat, then get yourself trapped and see who comes to save you.';
+  $('#trTitle', root).textContent = TREAT.title; $('#trBody', root).textContent = TREAT.body;
+  const f = $('form', root), msg = $('.formmsg', root), btn = $('button[type=submit]', root);
+  f.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (f.bot.value) return;
+    const v = n => f[n].value.trim();
+    if (!v('name')) { msg.className = 'formmsg err'; msg.textContent = 'Please tell us your name.'; f.name.focus(); return; }
+    if (!validEmail(v('email'))) { msg.className = 'formmsg err'; msg.textContent = 'Please add a valid email so we can send your treat.'; f.email.focus(); return; }
+    const subject = `Haunted Wild treat claimed: ${v('name')}${v('company') ? ` (${v('company')})` : ''}`;
+    const fields = { Name: v('name'), email: v('email'), Company: v('company') || '-', Treat: '20-minute brainstorm', Topic: f.topic.value || 'Not specified', Newsletter: f.news.checked ? 'Yes' : 'No', 'Rescued': rescue || '-' };
+    btn.disabled = true; btn.textContent = 'Claiming…'; msg.className = 'formmsg'; msg.textContent = '';
+    try {
+      await sendLead(subject, fields);
+      if (f.news.checked) mailchimp(v('email'), v('name').split(' ')[0]).catch(() => {});
+      const done = document.createElement('div'); done.className = 'done';
+      done.innerHTML = '<h3>Brainstorm claimed.</h3><p>Our team will email you to find a time. Watch your inbox… if you dare.</p>';
+      f.replaceWith(done); SFX.chime();
+    } catch (err) {
+      console.warn('treat', err); showSendError(msg, subject, fields);
+      btn.disabled = false; btn.textContent = 'Claim my brainstorm';
+    }
+  });
   $$('[data-act]', root).forEach(b => b.addEventListener('click', () => {
     const a = b.dataset.act;
     if (a === 'dare') return shareDare('');
@@ -761,21 +864,36 @@ async function copyText(text, msg) {
   try { await navigator.clipboard.writeText(text); toast(msg); }
   catch { prompt('Copy this:', text); }
 }
+const shareText = name => name
+  ? 'I’m trapped in The Haunted Wild. Find the 3 spirits to set me free.'
+  : 'Something got into The Virtual Wild. Can you find the 3 spirits hiding in The Haunted Wild?';
 async function shareDare(name) {
-  const url = dareUrl(name), text = 'I made it out of The Haunted Wild. I dare you to go in.';
+  const url = dareUrl(name), text = shareText(name);
   if (navigator.share) { try { await navigator.share({ title: 'The Haunted Wild', text, url }); return; } catch (e) { if (e.name === 'AbortError') return; } }
   copyText(url, 'Dare link copied. Send it to someone brave.');
 }
-function openSocial(net, name) {
-  const url = encodeURIComponent(dareUrl(name)), text = encodeURIComponent('I made it out of The Haunted Wild. I dare you to go in.');
+function openSocial(net, name, card) {
+  const url = encodeURIComponent(dareUrl(name)), text = encodeURIComponent(shareText(name));
   const links = {
     x: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
     facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
     linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
-    whatsapp: `https://wa.me/?text=${text}%20${url}`,
   };
-  if (net === 'copy') return copyText(dareUrl(name), 'Dare link copied. Send it to someone brave.');
+  if (net === 'copy') return copyText(dareUrl(name), 'Rescue link copied. Send it to someone brave.');
+  if (net === 'instagram') return shareToInstagram(name, card);
   window.open(links[net], '_blank', 'noopener,width=620,height=560');
+}
+// Instagram has no web share link. On phones the share sheet offers Instagram (Stories, feed, DMs);
+// elsewhere we save the photo, copy a caption with the rescue link, and open Instagram.
+async function shareToInstagram(name, card) {
+  const caption = `${shareText(name)} ${dareUrl(name)} ${INSTAGRAM.handle} #TheHauntedWild`;
+  if (card && navigator.canShare && navigator.canShare({ files: [card.file] })) {
+    try { await navigator.share({ files: [card.file], text: caption }); return; } catch (e) { if (e.name === 'AbortError') return; }
+  }
+  if (card) { const a = document.createElement('a'); a.href = card.url; a.download = 'the-haunted-wild.jpg'; document.body.appendChild(a); a.click(); a.remove(); }
+  try { await navigator.clipboard.writeText(caption); } catch {}
+  toast('Photo saved and caption copied. Post it on Instagram and paste the caption so friends can rescue you.', 6000);
+  setTimeout(() => window.open(INSTAGRAM.url, '_blank', 'noopener'), 900);
 }
 
 // ───────── Photo booth ─────────
@@ -807,7 +925,7 @@ function setupPhoto(root) {
       stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
       if (!alive) return stop();
       v.srcObject = stream; await v.play().catch(() => {});
-      msgEl.textContent = 'Frame yourself, then take your photo.';
+      msgEl.textContent = 'Get close, look scared, then take your photo.';
     } catch (e) {
       msgEl.textContent = e.name === 'NotAllowedError' ? 'Camera access was blocked. Allow it in your browser settings to take your photo.'
         : e.name === 'Insecure' ? 'The camera needs this page to be opened over HTTPS.' : 'We couldn’t start the camera.';
@@ -821,7 +939,7 @@ function setupPhoto(root) {
     const cap = mk(Math.min(900, v.videoWidth), Math.round(Math.min(900, v.videoWidth) * v.videoHeight / v.videoWidth));
     const cx = cap.getContext('2d'); cx.translate(cap.width, 0); cx.scale(-1, 1); cx.drawImage(v, 0, 0, cap.width, cap.height);
     $('#flash').classList.remove('go'); void $('#flash').offsetWidth; $('#flash').classList.add('go'); SFX.shutter();
-    stop(); msgEl.textContent = 'Developing your portrait…';
+    stop(); msgEl.textContent = 'Locking you in the booth…';
     const name = cleanName(nameIn.value); store.set('thw-name', name);
     card = await buildPortrait(cap, name);
     if (!alive) return;
@@ -832,13 +950,13 @@ function setupPhoto(root) {
   });
   $('#pbShare', root).addEventListener('click', async () => {
     const name = cleanName(nameIn.value);
-    try { await navigator.share({ files: [card.file], title: 'The Haunted Wild', text: `I made it out of The Haunted Wild. I dare you to go in: ${dareUrl(name)}` }); }
+    try { await navigator.share({ files: [card.file], title: 'The Haunted Wild', text: `${shareText(name)} ${dareUrl(name)}` }); }
     catch (e) { if (e.name !== 'AbortError') saveCard(); }
   });
   const saveCard = () => { const a = document.createElement('a'); a.href = card.url; a.download = 'the-haunted-wild.jpg'; document.body.appendChild(a); a.click(); a.remove(); };
   $('#pbSave', root).addEventListener('click', saveCard);
   $('#pbRetake', root).addEventListener('click', start);
-  $$('.soc', root).forEach(b => b.addEventListener('click', () => openSocial(b.dataset.net, cleanName(nameIn.value))));
+  $$('.soc', root).forEach(b => b.addEventListener('click', () => openSocial(b.dataset.net, cleanName(nameIn.value), card)));
   start();
   return () => { alive = false; stop(); if (card) setTimeout(() => URL.revokeObjectURL(card.url), 1000); };
 }
@@ -874,69 +992,102 @@ function drawGhost(c, x, y, s, a, rot) {
   c.restore();
 }
 
+function drawHand(c, x, y, s, rot, alpha) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.scale(s / 60, s / 60); c.globalAlpha = alpha; c.fillStyle = 'rgb(225,242,255)';
+  c.beginPath(); c.ellipse(30, 54, 17, 19, 0, 0, TAU); c.fill();
+  for (const [fx, fy, w, h, r] of [[15, 33, 8, 30, -12], [24, 24, 8, 36, -4], [35, 23, 8, 37, 3], [45, 28, 8, 32, 10], [48, 55, 8, 22, 48]]) {
+    c.save(); c.translate(fx, fy); c.rotate(r * Math.PI / 180); c.beginPath(); c.roundRect ? c.roundRect(-w / 2, -h / 2, w, h, 4) : c.rect(-w / 2, -h / 2, w, h); c.fill(); c.restore();
+  }
+  c.restore();
+}
+
+// The share photo: you, shrunk down and trapped behind the glass of the haunted booth in the giant hand.
 async function buildPortrait(cap, name) {
   const W = 1080, H = 1350, c = mk(W, H), x = c.getContext('2d');
   const mask = await personMask(cap);
+  const CROP = { x: 0.07, y: 0.06, w: 0.66 }, k = W / CROP.w;               // which part of the scene fills the card
+  const P = (fx, fy) => [(fx - CROP.x) * k, (fy - CROP.y) * k];
+  const FACE = [[0.112, 0.228], [0.65, 0.205], [0.65, 0.68], [0.122, 0.62]].map(([a, b]) => P(a, b)); // front glass wall
+  const glassPath = () => { x.beginPath(); FACE.forEach(([px, py], i) => i ? x.lineTo(px, py) : x.moveTo(px, py)); x.closePath(); };
+
+  // the booth, in the hand, haunted
   x.fillStyle = '#06070d'; x.fillRect(0, 0, W, H);
+  if (S.still) { const sw = S.still.width; x.drawImage(S.still, CROP.x * sw, CROP.y * sw, CROP.w * sw, CROP.w * sw * H / W, 0, 0, W, H); }
+  x.globalCompositeOperation = 'saturation'; x.globalAlpha = 0.5; x.fillStyle = '#777'; x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'multiply'; x.globalAlpha = 1; x.fillStyle = '#7383ad'; x.fillRect(0, 0, W, H);
+  x.globalCompositeOperation = 'source-over'; x.fillStyle = 'rgba(4,5,12,.2)'; x.fillRect(0, 0, W, H);
+
+  // you, inside the glass
+  const cx = (FACE[0][0] + FACE[1][0]) / 2, floor = (FACE[2][1] + FACE[3][1]) / 2 + 12, top = Math.min(FACE[0][1], FACE[1][1]);
+  x.save(); glassPath(); x.clip();
+  x.fillStyle = 'rgba(6,8,16,.45)'; x.fillRect(0, 0, W, H);
+  const glow = x.createRadialGradient(cx, floor - 300, 0, cx, floor - 300, 520);
+  glow.addColorStop(0, 'rgba(150,255,80,.35)'); glow.addColorStop(1, 'rgba(150,255,80,0)');
+  x.globalCompositeOperation = 'screen'; x.fillStyle = glow; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over';
+  const p = mk(cap.width, cap.height), px = p.getContext('2d');
+  px.drawImage(cap, 0, 0);
+  px.globalCompositeOperation = 'saturation'; px.globalAlpha = 0.45; px.fillStyle = '#777'; px.fillRect(0, 0, p.width, p.height);
+  px.globalCompositeOperation = 'multiply'; px.globalAlpha = 1; px.fillStyle = '#c3cede'; px.fillRect(0, 0, p.width, p.height);
+  if (mask) { px.globalCompositeOperation = 'destination-in'; px.imageSmoothingQuality = 'high'; px.drawImage(mask, 0, 0, p.width, p.height); }
   if (mask) {
-    // the haunted booth behind you
-    if (S.still) { x.globalAlpha = 0.9; drawCover(x, S.still, 0, 0, W, H, 0.35); x.globalAlpha = 1; }
-    x.globalCompositeOperation = 'multiply'; x.fillStyle = '#5d6c92'; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over';
-    x.fillStyle = 'rgba(4,5,12,.35)'; x.fillRect(0, 0, W, H);
-    drawGhost(x, W * 0.64, H * 0.27, 230, 0.55, 0.16);
-    drawGhost(x, W * 0.08, H * 0.36, 150, 0.3, -0.2);
-    const glow = x.createRadialGradient(W / 2, H * 0.72, 0, W / 2, H * 0.72, W * 0.7);
-    glow.addColorStop(0, 'rgba(150,255,80,.22)'); glow.addColorStop(1, 'rgba(150,255,80,0)');
-    x.globalCompositeOperation = 'screen'; x.fillStyle = glow; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'source-over';
-    // you, cut out and pulled into the scene
-    const p = mk(cap.width, cap.height), px = p.getContext('2d');
-    px.drawImage(cap, 0, 0);
-    px.globalCompositeOperation = 'saturation'; px.globalAlpha = 0.55; px.fillStyle = '#777'; px.fillRect(0, 0, p.width, p.height);
-    px.globalCompositeOperation = 'multiply'; px.globalAlpha = 1; px.fillStyle = '#b9c4d6'; px.fillRect(0, 0, p.width, p.height);
-    px.globalCompositeOperation = 'destination-in'; px.imageSmoothingQuality = 'high'; px.drawImage(mask, 0, 0, p.width, p.height);
-    const s = Math.max(W / p.width, (H * 0.8) / p.height);
-    x.shadowColor = 'rgba(150,255,80,.45)'; x.shadowBlur = 40;
-    x.drawImage(p, (W - p.width * s) / 2, H - p.height * s, p.width * s, p.height * s);
+    const sc = ((floor - top) * 0.98) / p.height;
+    x.shadowColor = 'rgba(150,255,80,.5)'; x.shadowBlur = 36;
+    x.drawImage(p, cx - p.width * sc / 2, floor - p.height * sc, p.width * sc, p.height * sc);
     x.shadowBlur = 0;
   } else {
-    // no cut-out available: a haunted double exposure instead
-    drawCover(x, cap, 0, 0, W, H, 0.4);
-    x.globalCompositeOperation = 'saturation'; x.globalAlpha = 0.6; x.fillStyle = '#777'; x.fillRect(0, 0, W, H);
-    x.globalCompositeOperation = 'multiply'; x.globalAlpha = 1; x.fillStyle = '#7e8db0'; x.fillRect(0, 0, W, H);
-    if (S.still) { x.globalCompositeOperation = 'screen'; x.globalAlpha = 0.28; drawCover(x, S.still, 0, 0, W, H, 0.35); }
-    x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
-    drawGhost(x, W * 0.7, H * 0.3, 200, 0.4, 0.16);
+    drawCover(x, p, FACE[0][0], top, FACE[1][0] - FACE[0][0], floor - top, 0.3);   // no cut-out: you fill the glass instead
   }
-  // fog, vignette and legibility bands
-  const fog = x.createLinearGradient(0, H * 0.7, 0, H); fog.addColorStop(0, 'rgba(200,220,255,0)'); fog.addColorStop(1, 'rgba(200,220,255,.12)');
-  x.fillStyle = fog; x.fillRect(0, 0, W, H);
-  const top = x.createLinearGradient(0, 0, 0, 340); top.addColorStop(0, 'rgba(4,5,12,.92)'); top.addColorStop(1, 'rgba(4,5,12,0)');
-  x.fillStyle = top; x.fillRect(0, 0, W, 340);
-  const bot = x.createLinearGradient(0, H * 0.68, 0, H); bot.addColorStop(0, 'rgba(4,5,12,0)'); bot.addColorStop(1, 'rgba(4,5,12,.95)');
-  x.fillStyle = bot; x.fillRect(0, H * 0.68, W, H * 0.32);
-  const vig = x.createRadialGradient(W / 2, H / 2, W * 0.35, W / 2, H / 2, H * 0.75); vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(0,0,0,.6)');
-  x.fillStyle = vig; x.fillRect(0, 0, W, H);
+  // glass: tint, reflections, handprints from the inside, mist
+  x.fillStyle = 'rgba(140,190,220,.07)'; x.fillRect(0, 0, W, H);
+  for (const [x0, w] of [[120, 120], [560, 70], [700, 160]]) {
+    const g = x.createLinearGradient(x0, 0, x0 + w, 0); g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(.5, 'rgba(255,255,255,.13)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+    x.save(); x.translate(0, 0); x.transform(1, 0, -0.35, 1, 0, 0); x.fillStyle = g; x.fillRect(x0, 0, w, H); x.restore();
+  }
+  drawHand(x, cx - 330, top + 300, 120, -0.25, 0.32);
+  drawHand(x, cx + 250, top + 250, 110, 0.3, 0.28);
+  const mist = x.createLinearGradient(0, floor - 180, 0, floor); mist.addColorStop(0, 'rgba(210,230,255,0)'); mist.addColorStop(1, 'rgba(210,230,255,.22)');
+  x.fillStyle = mist; x.fillRect(0, 0, W, H);
+  x.restore();
+  // the booth's metal frame in front of you: edges and the glass divider
+  x.lineCap = 'round';
+  const bar = (a, b, w) => { const [ax, ay] = P(...a), [bx, by] = P(...b); x.beginPath(); x.moveTo(ax, ay); x.lineTo(bx, by); x.lineWidth = w; x.stroke(); };
+  for (const [col, w] of [['#101117', 13], ['rgba(255,255,255,.22)', 2]]) {
+    x.strokeStyle = col;
+    bar([0.112, 0.228], [0.65, 0.205], w); bar([0.112, 0.228], [0.122, 0.62], w); bar([0.65, 0.205], [0.65, 0.68], w);
+    bar([0.122, 0.62], [0.65, 0.68], w); bar([0.25, 0.22], [0.26, 0.64], w * 0.8);
+  }
+
+  // ghosts circling outside
+  drawGhost(x, 935, 300, 160, 0.5, 0.18);
+  drawGhost(x, 70, 1010, 110, 0.32, -0.25);
+
+  // legibility bands
+  const topG = x.createLinearGradient(0, 0, 0, 280); topG.addColorStop(0, 'rgba(4,5,12,.95)'); topG.addColorStop(1, 'rgba(4,5,12,0)');
+  x.fillStyle = topG; x.fillRect(0, 0, W, 280);
+  const bot = x.createLinearGradient(0, 960, 0, H); bot.addColorStop(0, 'rgba(4,5,12,0)'); bot.addColorStop(.45, 'rgba(4,5,12,.85)'); bot.addColorStop(1, 'rgba(4,5,12,.97)');
+  x.fillStyle = bot; x.fillRect(0, 960, W, H - 960);
 
   // the sprayed-over title
-  const fsz = 96, ty = 172; x.font = `400 ${fsz}px "DM Serif Display", Georgia, serif`; x.textBaseline = 'middle';
+  const fsz = 92, ty = 112; x.font = `400 ${fsz}px "DM Serif Display", Georgia, serif`; x.textBaseline = 'middle';
   const parts = ['The ', 'Virtual', ' Wild'], ws = parts.map(t => x.measureText(t).width), total = ws.reduce((a, b) => a + b, 0);
-  let px0 = (W - total) / 2; x.fillStyle = '#f1ead8'; x.textAlign = 'left';
-  parts.forEach((t, i) => { x.fillText(t, px0, ty); px0 += ws[i]; });
+  let tx = (W - total) / 2; x.fillStyle = '#f1ead8'; x.textAlign = 'left';
+  parts.forEach((t, i) => { x.fillText(t, tx, ty); tx += ws[i]; });
   const vx = (W - total) / 2 + ws[0], vw = ws[1];
   const layer = mk(W, H), sp = new Spray(layer, 1);
   await sp.play(crossOutOp('8,8,14', () => ({ x: vx, y: ty - fsz * 0.36, w: vw, h: fsz * 0.72 })), 0);
   await sp.play(tagOp('HAUNTED', '#b4ff3a', 'rgba(150,255,60,.55)', () => ({ cx: vx + vw / 2, cy: ty - fsz * 0.5, size: fsz * 0.6, rot: -0.07 })), 0);
   x.drawImage(layer, 0, 0);
 
-  // the dare
-  x.textAlign = 'center'; x.fillStyle = '#f1ead8'; x.font = '400 64px "DM Serif Display", Georgia, serif';
-  x.fillText(name ? `${name} made it out.` : 'I made it out.', W / 2, H - 196);
-  x.fillStyle = '#b4ff3a'; x.font = 'italic 400 40px "DM Serif Display", Georgia, serif';
-  x.fillText('Do you dare to enter?', W / 2, H - 132);
-  const host = /localhost|127\.0\.0\.1/.test(location.hostname) ? 'thevirtualwild.com' : location.host + location.pathname.replace(/index\.html$/, '').replace(/\/$/, '');
+  // the rescue call
+  x.textAlign = 'center'; x.fillStyle = '#f1ead8';
+  const line1 = name ? `${name} is trapped in The Haunted Wild.` : 'I’m trapped in The Haunted Wild.';
+  let f1 = 62; do { x.font = `400 ${f1}px "DM Serif Display", Georgia, serif`; } while (x.measureText(line1).width > 990 && (f1 -= 2) > 30);
+  x.fillText(line1, W / 2, H - 206);
+  x.fillStyle = '#b4ff3a'; x.font = 'italic 400 42px "DM Serif Display", Georgia, serif';
+  x.fillText(name ? 'Find the 3 spirits to set them free.' : 'Find the 3 spirits to set me free.', W / 2, H - 142);
   x.fillStyle = 'rgba(241,234,216,.6)'; x.font = '600 24px Inter, -apple-system, sans-serif';
   if ('letterSpacing' in x) x.letterSpacing = '3px';
-  x.fillText(`${host.toUpperCase()}  ·  MADE BY THE VIRTUAL WILD`, W / 2, H - 66);
+  x.fillText('THEVIRTUALWILD.COM  ·  MADE BY THE VIRTUAL WILD', W / 2, H - 66);
 
   const blob = await new Promise(r => c.toBlob(r, 'image/jpeg', 0.92));
   return { blob, url: URL.createObjectURL(blob), file: new File([blob], 'the-haunted-wild.jpg', { type: 'image/jpeg' }) };
