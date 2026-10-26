@@ -305,7 +305,7 @@ const rescue = cleanName(params.get('free') || params.get('from'));   // who thi
 if (rescue) {
   $('#gateKicker').textContent = 'Rescue mission';
   $('#gateTitle').textContent = `${rescue} is trapped inside`;
-  const l = $('#dareLine'); l.textContent = 'Find the 3 restless spirits to set them free.'; l.hidden = false;
+  const l = $('#dareLine'); l.textContent = 'Find the 3 restless spirits to break the curse and get them out.'; l.hidden = false;
   $('#enter').textContent = 'Go in after them';
 }
 
@@ -555,12 +555,12 @@ function setMission() {
   const n = S.found.size;
   if (n === 3) {
     $('#mKicker').textContent = rescue ? 'Rescue complete' : 'Mission complete';
-    $('#mTitle').textContent = rescue ? `You freed ${rescue}` : 'All 3 spirits found';
+    $('#mTitle').textContent = rescue ? `${rescue} is free!` : 'All 3 spirits found';
     $('#mBody').textContent = 'Claim your treat, then get yourself trapped in the booth and see which friend comes to save you.';
   } else {
     $('#mKicker').textContent = rescue ? 'Rescue mission' : 'Your mission';
-    $('#mTitle').textContent = rescue ? `Free ${rescue}: find the 3 spirits` : 'Find the 3 restless spirits';
-    $('#mBody').textContent = (rescue ? `${rescue} is trapped in our haunted booth. ` : 'They’re hiding in our haunted booth. ')
+    $('#mTitle').textContent = rescue ? `${rescue} is trapped in the booth` : 'Find the 3 restless spirits';
+    $('#mBody').textContent = (rescue ? `Find the 3 restless spirits hiding in its rooms to break the curse and set ${rescue} free. ` : 'They’re hiding in our haunted booth. ')
       + 'Step into each room, sweep your light around and click anything that glints.';
   }
 }
@@ -827,7 +827,7 @@ function setupInquiry(root, { cap }) {
 }
 
 function setupReward(root) {
-  if (rescue) { $('#rwKicker', root).textContent = 'Rescue complete'; $('#modalTitle', root).textContent = `You freed ${rescue}!`; }
+  if (rescue) { $('#rwKicker', root).textContent = 'Rescue complete'; $('#modalTitle', root).textContent = `You saved ${rescue}!`; }
   $('#rwLede', root).textContent = rescue
     ? `All three spirits are at rest and ${rescue} is free. Your turn: claim your treat, then get yourself trapped and see who comes to save you.`
     : 'You found all three spirits. Few make it this far. Claim your treat, then get yourself trapped and see who comes to save you.';
